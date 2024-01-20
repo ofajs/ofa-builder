@@ -1,5 +1,6 @@
 {
   "name": "ofa-builder",
+  "type": "module",
   "version": "0.0.1",
   "description": "Tools for obfuscating and packaging ofa.js projects",
   "main": "app-config.js",
@@ -7,5 +8,8 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "YAO",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "terser": "^5.27.0"
+  }
 }
