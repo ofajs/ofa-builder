@@ -1,0 +1,11 @@
+{
+  "name": "ofa-builder",
+  "version": "0.0.1",
+  "description": "Tools for obfuscating and packaging ofa.js projects",
+  "main": "app-config.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "YAO",
+  "license": "MIT"
+}
