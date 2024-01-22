@@ -14,6 +14,9 @@
     .hide {
       display: none !important;
     }
+    iconify-icon {
+      font-size: 18px;
+    }
   </style>
 
   <div class="container" class:hide="!canuse">
@@ -22,7 +25,7 @@
         选择项目
       </p-button>
       <p-button :variant="step === 1 ? 'contained' : 'outlined'">
-        选择文件
+        确认文件
       </p-button>
       <p-button :variant="step === 2 ? 'contained' : 'outlined'">
         配置
@@ -39,49 +42,11 @@
         不用担心上传到服务器，因为这个应用没有服务端，是直接在浏览器上完成所有操作！！
       </p>
     </x-if>
-    <x-else-if :value="step === 1">
-      <h2>请选择要压缩混淆的文件</h2>
-      <x-if :value="loadingUgFile">
-        <p>项目扫描中。。。</p>
-      </x-if>
-      <x-else>
-        <div>
-          Total File:{{s1Data.total}} <br />
-          <div
-            style="
-              display: flex;
-              --item-padding-top: 0;
-              --item-padding-bottom: 0;
-            "
-          >
-            <div>
-              <div>Component File:{{s1Data.comps.length}}</div>
-              <p-list style="max-height: 300px; overflow-y: auto">
-                <x-fill :value="s1Data.comps">
-                  <p-list-item>{{$data}}</p-list-item>
-                </x-fill>
-              </p-list>
-            </div>
-            <div>
-              <div>Page File:{{s1Data.pages.length}}</div>
-              <p-list style="max-height: 300px; overflow-y: auto">
-                <x-fill :value="s1Data.pages">
-                  <p-list-item>{{$data}}</p-list-item>
-                </x-fill>
-              </p-list>
-            </div>
-            <div>
-              <div>javascript File:{{s1Data.jss.length}}</div>
-              <p-list style="max-height: 300px; overflow-y: auto">
-                <x-fill :value="s1Data.jss">
-                  <p-list-item>{{$data}}</p-list-item>
-                </x-fill>
-              </p-list>
-            </div>
-          </div>
-        </div>
-      </x-else>
-    </x-else-if>
+    <o-page
+      id="confirm-page"
+      src="./confirm.html"
+      class:hide="step !== 1"
+    ></o-page>
   </div>
 
   <div class="container" class:hide="!!canuse">
@@ -115,121 +80,22 @@
           step: 0,
           _target: null, // 目标文件夹
           loadingUgFile: true,
-          s1Data: {
-            total: 0,
-            compCount: 0,
-            pageCount: 0,
-            jsCount: 0,
-            comps: [],
-            pages: [],
-            jss: [],
-          },
-        },
-        watch: {
-          step(val) {
-            switch (val) {
-              case 1:
-                this.reloadFolder();
-                break;
-            }
-          },
         },
         proto: {
           async selectDir() {
             this._target = await open();
+            this.shadow.$("#confirm-page")._target = this._target;
             this.step++;
-          },
-          async reloadFolder() {
-            this.loadingUgFile = true;
-
-            const { list, total, comps, pages, jss } = await getList(
-              this._target,
-              async (opt) => {
-                if (/\.html$/.test(opt.name)) {
-                  const content = await opt.handle.text();
-                  const temp = $(`<template>${content}</template>`);
-
-                  const isComp = !!temp.$("template[component]");
-
-                  if (isComp) {
-                    opt.isComp = true;
-                    return;
-                  }
-
-                  const isPage = !!temp.$("template[page]");
-
-                  if (isPage) {
-                    opt.isPage = true;
-                  }
-                } else if (/\.js$/.test(opt.name)) {
-                  opt.isJs = true;
-                }
-              }
-            );
-
-            this.s1Data.comps = comps;
-            this.s1Data.pages = pages;
-            this.s1Data.jss = jss;
-            this.s1Data.total = total;
-
-            console.log("list:", list, total, comps, pages, jss);
-            this.loadingUgFile = false;
+            this.shadow.$("#confirm-page").reloadFolder();
           },
         },
-        async ready() {
-          // const testFolder = await get("Punch-UI");
-          // this._target = testFolder; // test
-          // this.step++;
+        async attached() {
+          const testFolder = await get("Punch-UI");
+          this._target = testFolder;
+          this.shadow.$("#confirm-page")._target = testFolder;
+          this.step++;
+          this.shadow.$("#confirm-page").reloadFolder();
         },
-      };
-    };
-
-    const getList = async (parHandle, callback) => {
-      const list = [];
-      let count = 0;
-      const comps = [];
-      const pages = [];
-      const jss = [];
-      for await (let [name, handle] of parHandle.entries()) {
-        if (name === "node_modules") {
-          continue;
-        }
-
-        const opt = {
-          name,
-          kind: handle.kind,
-          handle,
-        };
-
-        if (opt.kind === "directory") {
-          const result = await getList(handle, callback);
-          count += result.total;
-          comps.push(...result.comps);
-          pages.push(...result.pages);
-          jss.push(...result.jss);
-
-          opt.childs = result.list;
-        } else {
-          count++;
-          await callback(opt);
-          if (opt.isComp) {
-            comps.push(handle.path);
-          } else if (opt.isPage) {
-            pages.push(handle.path);
-          } else if (opt.isJs) {
-            jss.push(handle.path);
-          }
-        }
-
-        list.push(opt);
-      }
-
-      return {
-        list,
-        total: count,
-        comps,
-        pages,
-        jss,
       };
     };
   </script>

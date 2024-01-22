@@ -1,0 +1,161 @@
+<template page>
+  <h2>确认要压缩混淆的文件</h2>
+  <x-if :value="loadingUgFile">
+    <p>项目扫描中。。。</p>
+  </x-if>
+  <x-else>
+    <div>
+      <!-- Total File:{{s1Data.total}} <br /> -->
+      <div
+        style="display: flex; --item-padding-top: 0; --item-padding-bottom: 0"
+      >
+        <div>
+          <div>Component File:{{s1Data.comps.length}}</div>
+          <p-list style="max-height: 300px; overflow-y: auto">
+            <x-fill :value="s1Data.comps">
+              <p-list-item>
+                <iconify-icon
+                  icon="iconamoon:component"
+                  slot="prefix"
+                ></iconify-icon>
+                {{$data}}</p-list-item
+              >
+            </x-fill>
+          </p-list>
+        </div>
+        <div>
+          <div>Page File:{{s1Data.pages.length}}</div>
+          <p-list style="max-height: 300px; overflow-y: auto">
+            <x-fill :value="s1Data.pages">
+              <p-list-item>
+                <iconify-icon
+                  icon="icon-park-outline:page"
+                  slot="prefix"
+                ></iconify-icon>
+                {{$data}}
+              </p-list-item>
+            </x-fill>
+          </p-list>
+        </div>
+        <div>
+          <div>javascript File:{{s1Data.jss.length}}</div>
+          <p-list style="max-height: 300px; overflow-y: auto">
+            <x-fill :value="s1Data.jss">
+              <p-list-item>
+                <iconify-icon
+                  icon="tabler:brand-javascript"
+                  slot="prefix"
+                ></iconify-icon>
+                {{$data}}
+              </p-list-item>
+            </x-fill>
+          </p-list>
+        </div>
+      </div>
+    </div>
+  </x-else>
+  <script>
+    export default {
+      data: {
+        s1Data: {
+          total: 0,
+          compCount: 0,
+          pageCount: 0,
+          jsCount: 0,
+          comps: [],
+          pages: [],
+          jss: [],
+        },
+        _target: null, // 目标文件夹
+        loadingUgFile: true,
+      },
+      proto: {
+        async reloadFolder() {
+          this.loadingUgFile = true;
+
+          const { list, total, comps, pages, jss } = await getList(
+            this._target,
+            async (opt) => {
+              if (/\.html$/.test(opt.name)) {
+                const content = await opt.handle.text();
+                const temp = $(`<template>${content}</template>`);
+
+                const isComp = !!temp.$("template[component]");
+
+                if (isComp) {
+                  opt.isComp = true;
+                  return;
+                }
+
+                const isPage = !!temp.$("template[page]");
+
+                if (isPage) {
+                  opt.isPage = true;
+                }
+              } else if (/\.js$/.test(opt.name)) {
+                opt.isJs = true;
+              }
+            }
+          );
+
+          this.s1Data.comps = comps;
+          this.s1Data.pages = pages;
+          this.s1Data.jss = jss;
+          this.s1Data.total = total;
+
+          // console.log("list:", list, total, comps, pages, jss);
+          this.loadingUgFile = false;
+        },
+      },
+    };
+
+    const getList = async (parHandle, callback) => {
+      const list = [];
+      let count = 0;
+      const comps = [];
+      const pages = [];
+      const jss = [];
+      for await (let [name, handle] of parHandle.entries()) {
+        if (name === "node_modules") {
+          continue;
+        }
+
+        const opt = {
+          name,
+          kind: handle.kind,
+          handle,
+        };
+
+        if (opt.kind === "directory") {
+          const result = await getList(handle, callback);
+          count += result.total;
+          comps.push(...result.comps);
+          pages.push(...result.pages);
+          jss.push(...result.jss);
+
+          opt.childs = result.list;
+        } else {
+          count++;
+          await callback(opt);
+          if (opt.isComp) {
+            comps.push(handle.path);
+          } else if (opt.isPage) {
+            pages.push(handle.path);
+          } else if (opt.isJs) {
+            jss.push(handle.path);
+          }
+        }
+
+        list.push(opt);
+      }
+
+      return {
+        list,
+        total: count,
+        comps,
+        pages,
+        jss,
+      };
+    };
+  </script>
+</template>
