@@ -14,7 +14,7 @@
       border-radius: 8px;
     }
     .container > div {
-      padding: 8px;
+      padding: 8px 0 0 8px;
       max-width: 30vw;
       border-right: #aaa solid 1px;
     }
@@ -90,7 +90,7 @@
   </div>
   <script>
     export default async ({ load }) => {
-      load(`https://cdn.jsdelivr.net/npm/terser@5.27.0/dist/bundle.min.js`);
+      // load(`https://cdn.jsdelivr.net/npm/terser@5.27.0/dist/bundle.min.js`);
       // const terser = await load(
       //   `https://cdn.jsdelivr.net/npm/terser@5.27.0/dist/bundle.min.js`
       // );
@@ -111,11 +111,24 @@
           jss: [],
           _target: null, // 目标文件夹
           loadingUgFile: true,
+          _handles: {},
         },
         proto: {
-          clickNext() {},
+          clickNext() {
+            this.emit("next", {
+              bubbles: false,
+              data: {
+                handles: this._handles,
+                comps: this.comps.toJSON(),
+                pages: this.pages.toJSON(),
+                jss: this.jss.toJSON(),
+              },
+            });
+          },
           async reloadFolder() {
             this.loadingUgFile = true;
+
+            const handles = new Map();
 
             const { list, total, comps, pages, jss } = await getList(
               this._target,
@@ -128,6 +141,7 @@
 
                   if (isComp) {
                     opt.isComp = true;
+                    handles.set(opt.handle.path, opt.handle);
                     return;
                   }
 
@@ -135,12 +149,16 @@
 
                   if (isPage) {
                     opt.isPage = true;
+                    handles.set(opt.handle.path, opt.handle);
                   }
                 } else if (/\.js$/.test(opt.name)) {
                   opt.isJs = true;
+                  handles.set(opt.handle.path, opt.handle);
                 }
               }
             );
+
+            this._handles = handles;
 
             this.comps = comps;
             this.pages = pages;
@@ -149,6 +167,10 @@
 
             // console.log("list:", list, total, comps, pages, jss);
             this.loadingUgFile = false;
+
+            setTimeout(() => {
+              this.shadow.$("p-button").ele.click();
+            }, 100);
           },
         },
       };

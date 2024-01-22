@@ -1,0 +1,115 @@
+<template page>
+  <style>
+    .container {
+      display: flex;
+      align-items: center;
+      flex-direction: column;
+    }
+  </style>
+  <div class="container">
+    <h2>接下来将对 组件 / 页面 / js文件 进行压缩混淆</h2>
+    <p>请选择要文件的处理方式</p>
+    <div>{{tips}}</div>
+    <div>
+      <p-button on:click="toMin">源文件旁生成min文件</p-button>
+      <!-- <p-button on:click="toDist" attr:disabled="doing ? '' : null"
+        >项目导出到dist目录</p-button
+      >
+      <p-button on:click="toZip" attr:disabled="doing ? '' : null"
+        >项目导出为zip文件</p-button
+      > -->
+    </div>
+  </div>
+  <script>
+    export default async ({ load }) => {
+      const { get } = await load(
+        "https://cdn.jsdelivr.net/gh/kirakiray/NoneOS@1.3.2/core/fs/main.js"
+      );
+
+      const { minify } = await load(
+        "https://cdn.jsdelivr.net/npm/html-minifier-terser@7.2.0/dist/htmlminifier.esm.bundle.js"
+      );
+
+      return {
+        data: {
+          doing: false,
+          tips: "",
+        },
+        proto: {
+          async toMin() {
+            const { handles, comps, jss, pages } = this._data;
+
+            await Promise.all(
+              [...comps, ...pages].map(async (path) => {
+                const handle = handles.get(path);
+
+                const content = await handle.text();
+
+                let result;
+
+                try {
+                  result = await minify(content, {
+                    minifyCSS: true,
+                    minifyJS: true,
+                    removeComments: true,
+                    collapseWhitespace: true,
+                  });
+                } catch (err) {
+                  debugger;
+                }
+
+                const parent = await handle.parent();
+
+                const targetFile = await parent.get(
+                  handle.name.replace(/(.+)\.(.+)/, "$1.$2"),
+                  //   handle.name.replace(/(.+)\.(.+)/, "$1.min.$2"),
+                  {
+                    create: "file",
+                  }
+                );
+
+                await targetFile.write(result);
+              })
+            );
+          },
+          //   async trans() {
+          //     const { handles, comps, jss, pages } = this._data;
+
+          //     const tempFolder = await get("__temp_folder", {
+          //       create: "directory",
+          //     });
+
+          //     debugger;
+
+          //     await Promise.all(
+          //       jss.map(async (path) => {
+          //         const handle = handles.get(path);
+
+          //         const content = await handle.text();
+
+          //         const result = await Terser.minify(content);
+
+          //         debugger;
+          //       })
+          //     );
+          //   },
+          //   async toDist() {
+          //     this.doing = true;
+          //     const datas = await this.trans();
+          //     this.doing = false;
+          //   },
+          //   async toZip() {
+          //     this.doing = true;
+          //     const datas = await this.trans();
+          //     this.doing = false;
+          //   },
+        },
+        attached() {
+          setTimeout(() => {
+            console.log(this._data);
+          }, 500);
+        },
+      };
+    };
+  </script>
+</template>
