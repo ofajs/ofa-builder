@@ -39,9 +39,9 @@
       <!-- Total File:{{total}} <br /> -->
       <div class="container">
         <div>
-          <div>Component File:{{comps.length}}</div>
+          <div>Component File:{{compFiles.length}}</div>
           <p-list>
-            <x-fill :value="comps">
+            <x-fill :value="compFiles">
               <p-list-item>
                 <iconify-icon
                   icon="iconamoon:component"
@@ -53,9 +53,9 @@
           </p-list>
         </div>
         <div>
-          <div>Page File:{{pages.length}}</div>
+          <div>Page File:{{pageFiles.length}}</div>
           <p-list>
-            <x-fill :value="pages">
+            <x-fill :value="pageFiles">
               <p-list-item>
                 <iconify-icon
                   icon="icon-park-outline:page"
@@ -67,12 +67,26 @@
           </p-list>
         </div>
         <div>
-          <div>javascript File:{{jss.length}}</div>
+          <div>javascript File:{{jsFiles.length}}</div>
           <p-list>
-            <x-fill :value="jss">
+            <x-fill :value="jsFiles">
               <p-list-item>
                 <iconify-icon
                   icon="tabler:brand-javascript"
+                  slot="prefix"
+                ></iconify-icon>
+                {{$data}}
+              </p-list-item>
+            </x-fill>
+          </p-list>
+        </div>
+        <div>
+          <div>css File:{{cssFiles.length}}</div>
+          <p-list>
+            <x-fill :value="cssFiles">
+              <p-list-item>
+                <iconify-icon
+                  icon="ph:file-css"
                   slot="prefix"
                 ></iconify-icon>
                 {{$data}}
@@ -106,9 +120,10 @@
           compCount: 0,
           pageCount: 0,
           jsCount: 0,
-          comps: [],
-          pages: [],
-          jss: [],
+          compFiles: [],
+          pageFiles: [],
+          jsFiles: [],
+          cssFiles: [],
           _target: null, // 目标文件夹
           loadingUgFile: true,
           _handles: {},
@@ -119,9 +134,10 @@
               bubbles: false,
               data: {
                 handles: this._handles,
-                comps: this.comps.toJSON(),
-                pages: this.pages.toJSON(),
-                jss: this.jss.toJSON(),
+                compFiles: this.compFiles.toJSON(),
+                pageFiles: this.pageFiles.toJSON(),
+                jsFiles: this.jsFiles.toJSON(),
+                cssFiles: this.cssFiles.toJSON(),
               },
             });
           },
@@ -130,9 +146,8 @@
 
             const handles = new Map();
 
-            const { list, total, comps, pages, jss } = await getList(
-              this._target,
-              async (opt) => {
+            const { list, total, compFiles, pageFiles, jsFiles, cssFiles } =
+              await getList(this._target, async (opt) => {
                 if (/\.html$/.test(opt.name)) {
                   const content = await opt.handle.text();
                   const temp = $(`<template>${content}</template>`);
@@ -154,23 +169,26 @@
                 } else if (/\.js$/.test(opt.name)) {
                   opt.isJs = true;
                   handles.set(opt.handle.path, opt.handle);
+                } else if (/\.css$/.test(opt.name)) {
+                  opt.isCss = true;
+                  handles.set(opt.handle.path, opt.handle);
                 }
-              }
-            );
+              });
 
             this._handles = handles;
 
-            this.comps = comps;
-            this.pages = pages;
-            this.jss = jss;
+            this.compFiles = compFiles;
+            this.pageFiles = pageFiles;
+            this.jsFiles = jsFiles;
+            this.cssFiles = cssFiles;
             this.total = total;
 
-            // console.log("list:", list, total, comps, pages, jss);
+            // console.log("list:", list, total, compFiles, pageFiles, jsFiles);
             this.loadingUgFile = false;
 
-            setTimeout(() => {
-              this.shadow.$("p-button").ele.click();
-            }, 100);
+            // setTimeout(() => {
+            //   this.shadow.$("p-button").ele.click();
+            // }, 100);
           },
         },
       };
@@ -179,9 +197,10 @@
     const getList = async (parHandle, callback) => {
       const list = [];
       let count = 0;
-      const comps = [];
-      const pages = [];
-      const jss = [];
+      const compFiles = [];
+      const pageFiles = [];
+      const jsFiles = [];
+      const cssFiles = [];
       for await (let [name, handle] of parHandle.entries()) {
         if (name === "node_modules") {
           continue;
@@ -196,20 +215,23 @@
         if (opt.kind === "directory") {
           const result = await getList(handle, callback);
           count += result.total;
-          comps.push(...result.comps);
-          pages.push(...result.pages);
-          jss.push(...result.jss);
+          compFiles.push(...result.compFiles);
+          pageFiles.push(...result.pageFiles);
+          jsFiles.push(...result.jsFiles);
+          cssFiles.push(...result.cssFiles);
 
           opt.childs = result.list;
         } else {
           count++;
           await callback(opt);
           if (opt.isComp) {
-            comps.push(handle.path);
+            compFiles.push(handle.path);
           } else if (opt.isPage) {
-            pages.push(handle.path);
+            pageFiles.push(handle.path);
           } else if (opt.isJs) {
-            jss.push(handle.path);
+            jsFiles.push(handle.path);
+          } else if (opt.isCss) {
+            cssFiles.push(handle.path);
           }
         }
 
@@ -219,9 +241,10 @@
       return {
         list,
         total: count,
-        comps,
-        pages,
-        jss,
+        compFiles,
+        pageFiles,
+        jsFiles,
+        cssFiles,
       };
     };
   </script>
