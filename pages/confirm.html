@@ -85,10 +85,18 @@
           <p-list>
             <x-fill :value="cssFiles">
               <p-list-item>
-                <iconify-icon
-                  icon="ph:file-css"
-                  slot="prefix"
-                ></iconify-icon>
+                <iconify-icon icon="ph:file-css" slot="prefix"></iconify-icon>
+                {{$data}}
+              </p-list-item>
+            </x-fill>
+          </p-list>
+        </div>
+        <div>
+          <div>Normal HTML File:{{normalHtml.length}}</div>
+          <p-list>
+            <x-fill :value="normalHtml">
+              <p-list-item>
+                <iconify-icon icon="ph:file-html" slot="prefix"></iconify-icon>
                 {{$data}}
               </p-list-item>
             </x-fill>
@@ -124,6 +132,7 @@
           pageFiles: [],
           jsFiles: [],
           cssFiles: [],
+          normalHtml: [],
           _target: null, // 目标文件夹
           loadingUgFile: true,
           _handles: {},
@@ -138,6 +147,7 @@
                 pageFiles: this.pageFiles.toJSON(),
                 jsFiles: this.jsFiles.toJSON(),
                 cssFiles: this.cssFiles.toJSON(),
+                normalHtml: this.normalHtml.toJSON(),
               },
             });
           },
@@ -146,34 +156,45 @@
 
             const handles = new Map();
 
-            const { list, total, compFiles, pageFiles, jsFiles, cssFiles } =
-              await getList(this._target, async (opt) => {
-                if (/\.html$/.test(opt.name)) {
-                  const content = await opt.handle.text();
-                  const temp = $(`<template>${content}</template>`);
+            const {
+              list,
+              total,
+              compFiles,
+              pageFiles,
+              jsFiles,
+              cssFiles,
+              normalHtml,
+            } = await getList(this._target, async (opt) => {
+              if (/\.html$/.test(opt.name)) {
+                const content = await opt.handle.text();
+                const temp = $(`<template>${content}</template>`);
 
-                  const isComp = !!temp.$("template[component]");
+                const isComp = !!temp.$("template[component]");
 
-                  if (isComp) {
-                    opt.isComp = true;
-                    handles.set(opt.handle.path, opt.handle);
-                    return;
-                  }
-
-                  const isPage = !!temp.$("template[page]");
-
-                  if (isPage) {
-                    opt.isPage = true;
-                    handles.set(opt.handle.path, opt.handle);
-                  }
-                } else if (/\.js$/.test(opt.name)) {
-                  opt.isJs = true;
+                if (isComp) {
+                  opt.isComp = true;
                   handles.set(opt.handle.path, opt.handle);
-                } else if (/\.css$/.test(opt.name)) {
-                  opt.isCss = true;
-                  handles.set(opt.handle.path, opt.handle);
+                  return;
                 }
-              });
+
+                const isPage = !!temp.$("template[page]");
+
+                if (isPage) {
+                  opt.isPage = true;
+                  handles.set(opt.handle.path, opt.handle);
+                  return;
+                }
+
+                opt.isHtml = true;
+                handles.set(opt.handle.path, opt.handle);
+              } else if (/\.js$/.test(opt.name)) {
+                opt.isJs = true;
+                handles.set(opt.handle.path, opt.handle);
+              } else if (/\.css$/.test(opt.name)) {
+                opt.isCss = true;
+                handles.set(opt.handle.path, opt.handle);
+              }
+            });
 
             this._handles = handles;
 
@@ -181,6 +202,7 @@
             this.pageFiles = pageFiles;
             this.jsFiles = jsFiles;
             this.cssFiles = cssFiles;
+            this.normalHtml = normalHtml;
             this.total = total;
 
             // console.log("list:", list, total, compFiles, pageFiles, jsFiles);
@@ -201,6 +223,7 @@
       const pageFiles = [];
       const jsFiles = [];
       const cssFiles = [];
+      const normalHtml = [];
       for await (let [name, handle] of parHandle.entries()) {
         if (name === "node_modules") {
           continue;
@@ -219,6 +242,7 @@
           pageFiles.push(...result.pageFiles);
           jsFiles.push(...result.jsFiles);
           cssFiles.push(...result.cssFiles);
+          normalHtml.push(...result.normalHtml);
 
           opt.childs = result.list;
         } else {
@@ -232,6 +256,8 @@
             jsFiles.push(handle.path);
           } else if (opt.isCss) {
             cssFiles.push(handle.path);
+          } else if (opt.isHtml) {
+            normalHtml.push(handle.path);
           }
         }
 
@@ -245,6 +271,7 @@
         pageFiles,
         jsFiles,
         cssFiles,
+        normalHtml,
       };
     };
   </script>

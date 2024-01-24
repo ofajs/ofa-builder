@@ -1,4 +1,6 @@
 <template page>
+  <l-m src="@pui/button/button.html"></l-m>
+  <l-m src="@pui/switch/switch.html"></l-m>
   <style>
     .container {
       display: flex;
@@ -7,7 +9,18 @@
     }
   </style>
   <div class="container">
-    <h2>接下来将对 组件 / 页面 / js文件 进行压缩混淆</h2>
+    <h2>接下来将对下面文件进行压缩混淆</h2>
+    <div>
+      <p-switch disabled checked name="comp">Component html文件</p-switch>
+      <br />
+      <p-switch disabled checked name="page">Page Html文件</p-switch>
+      <br />
+      <p-switch checked name="js">js文件</p-switch>
+      <br />
+      <p-switch checked name="css">css文件</p-switch>
+      <br />
+      <p-switch checked name="html">普通html文件</p-switch>
+    </div>
     <p>请选择要文件的处理方式</p>
     <div>{{tips}}</div>
     <div>
@@ -48,6 +61,7 @@
           tips: "",
           errors: [],
           ok: false,
+          formData: {},
         },
         proto: {
           async toSameDir(type) {
@@ -59,14 +73,26 @@
               }
             }
 
-            const { handles, compFiles, jsFiles, cssFiles, pageFiles } =
-              this._data;
+            const {
+              handles,
+              compFiles,
+              jsFiles,
+              cssFiles,
+              pageFiles,
+              normalHtml,
+            } = this._data;
 
             const errors = [];
 
             await Promise.all(
-              //   [...compFiles, ...pageFiles, ...jsFiles, ...cssFiles].map(
-              [...cssFiles].map(async (path) => {
+              [
+                ...compFiles,
+                ...pageFiles,
+                ...(this.formData.js ? jsFiles : []),
+                ...(this.formData.css ? cssFiles : []),
+                ...(this.formData.html ? normalHtml : []),
+              ].map(async (path) => {
+                //   [...cssFiles].map(async (path) => {
                 const handle = handles.get(path);
 
                 let content = await handle.text();
@@ -158,6 +184,9 @@
         //     console.log(this._data);
         //   }, 500);
         // },
+        ready() {
+          this.formData = this.shadow.formData("p-switch");
+        },
       };
     };
   </script>
