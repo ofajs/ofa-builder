@@ -59,7 +59,14 @@
       //     "https://cdn.jsdelivr.net/npm/html-minifier-terser@7.2.0/dist/htmlminifier.esm.bundle.js"
       //   );
 
-      const { minify } = await load("../libs/htmlminifier.fixed.esm.js");
+      // await load(
+      //   "https://cdn.jsdelivr.net/npm/html-minifier-terser@7.2.0/dist/htmlminifier.umd.bundle.js"
+      // );
+
+      // const { minify } = await load("../libs/htmlminifier.fixed.esm.js");
+      await load("../libs/htmlminifier.fixed.umd.min.js");
+
+      const { minify } = HTMLMinifier;
 
       return {
         data: {
