@@ -11,6 +11,10 @@
   <div class="container">
     <h2>{{t('p3.title')}}</h2>
     <div>
+      <p-switch disabled checked
+        >Ignore <span style="color: #595959">*.min.*</span> file</p-switch
+      >
+      <br />
       <p-switch disabled checked name="comp">{{t('compFile')}}</p-switch>
       <br />
       <p-switch disabled checked name="page">{{t('pageFile')}}</p-switch>
@@ -121,6 +125,7 @@
                   });
                 } catch (err) {
                   errors.push(path);
+                  console.error(err);
                   return;
                 }
 
