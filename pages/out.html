@@ -1,0 +1,176 @@
+<template page>
+  <l-m src="@pui/button/button.html"></l-m>
+  <l-m src="@pui/switch/switch.html"></l-m>
+  <style>
+    .container {
+      display: flex;
+      align-items: center;
+      flex-direction: column;
+    }
+  </style>
+  <div class="container">
+    <h2>{{t('p3.title')}}</h2>
+    <div>
+      <p-switch disabled checked
+        >Ignore <span style="color: #595959">*.min.*</span> file</p-switch
+      >
+      <br />
+      <p-switch disabled checked name="comp">{{t('compFile')}}</p-switch>
+      <br />
+      <p-switch disabled checked name="page">{{t('pageFile')}}</p-switch>
+      <br />
+      <p-switch checked name="js">{{t('jsFile')}}</p-switch>
+      <br />
+      <p-switch checked name="css">{{t('cssFile')}}</p-switch>
+      <br />
+      <p-switch checked name="html">{{t('htmlFile')}}</p-switch>
+    </div>
+    <p>{{t('p3.desc')}}</p>
+    <div>{{tips}}</div>
+    <div>
+      <p-button on:click="toSameDir('min')">{{t('p3.btn1')}}</p-button>
+      <p-button on:click="toSameDir('cover')">{{t('p3.btn2')}}</p-button>
+      <!-- <p-button on:click="toDist" attr:disabled="doing ? '' : null"
+        >项目导出到dist目录</p-button
+      >
+      <p-button on:click="toZip" attr:disabled="doing ? '' : null"
+        >项目导出为zip文件</p-button
+      > -->
+    </div>
+    <x-if :value="ok">
+      <h3>{{t('p3.ok')}}</h3>
+      <x-if :value="errors.length">
+        {{t('p3.errdesc')}}
+        <ul>
+          <x-fill :value="errors"> <li>{{$data}}</li> </x-fill>
+        </ul>
+      </x-if>
+    </x-if>
+  </div>
+  <script>
+    import t, { local } from "../local.js";
+
+    export default async ({ load }) => {
+      const { get } = await load(
+        "https://cdn.jsdelivr.net/gh/kirakiray/NoneOS@1.3.2/core/fs/main.js"
+      );
+
+      //   const { minify } = await load(
+      //     "https://cdn.jsdelivr.net/npm/html-minifier-terser@7.2.0/dist/htmlminifier.esm.bundle.js"
+      //   );
+
+      // await load(
+      //   "https://cdn.jsdelivr.net/npm/html-minifier-terser@7.2.0/dist/htmlminifier.umd.bundle.js"
+      // );
+
+      // const { minify } = await load("../libs/htmlminifier.fixed.esm.js");
+      await load("../libs/htmlminifier.fixed.umd.min.js");
+
+      const { minify } = HTMLMinifier;
+
+      return {
+        data: {
+          doing: false,
+          tips: "",
+          errors: [],
+          ok: false,
+          formData: {},
+        },
+        attached() {
+          this.local = local;
+        },
+        detached() {
+          this.local = {};
+        },
+        proto: {
+          t,
+          async toSameDir(type) {
+            if (type === "cover") {
+              if (!confirm(this.t("p3.coverTips"))) {
+                return;
+              }
+            }
+
+            const {
+              handles,
+              compFiles,
+              jsFiles,
+              cssFiles,
+              pageFiles,
+              normalHtml,
+            } = this._data;
+
+            const errors = [];
+
+            await Promise.all(
+              [
+                ...compFiles,
+                ...pageFiles,
+                ...(this.formData.js ? jsFiles : []),
+                ...(this.formData.css ? cssFiles : []),
+                ...(this.formData.html ? normalHtml : []),
+              ].map(async (path) => {
+                //   [...cssFiles].map(async (path) => {
+                const handle = handles.get(path);
+
+                let content = await handle.text();
+
+                if (/\.js$/.test(path)) {
+                  content = `\x3Cscript>${content}\x3C\/script>`;
+                } else if (/\.css/.test(path)) {
+                  content = `\x3Cstyle>${content}\x3C\/style>`;
+                }
+
+                let result;
+
+                try {
+                  result = await minify(content, {
+                    minifyCSS: true,
+                    minifyJS: true,
+                    removeComments: true,
+                    collapseWhitespace: true,
+                  });
+                } catch (err) {
+                  errors.push(path);
+                  console.error(err);
+                  return;
+                }
+
+                if (/\.js$/.test(path)) {
+                  result = result.replace(
+                    /^\x3Cscript>([\s\S]+)\x3C\/script>/,
+                    "$1"
+                  );
+                } else if (/\.css/.test(path)) {
+                  result = result.replace(
+                    /^\x3Cstyle>([\s\S]+)\x3C\/style>/,
+                    "$1"
+                  );
+                }
+
+                const parent = await handle.parent();
+
+                const targetFile = await parent.get(
+                  type === "cover"
+                    ? handle.name.replace(/(.+)\.(.+)/, "$1.$2")
+                    : handle.name.replace(/(.+)\.(.+)/, "$1.min.$2"),
+                  {
+                    create: "file",
+                  }
+                );
+
+                await targetFile.write(result);
+              })
+            );
+
+            this.ok = true;
+            this.errors = errors;
+          },
+        },
+        ready() {
+          this.formData = this.shadow.formData("p-switch");
+        },
+      };
+    };
+  </script>
+</template>

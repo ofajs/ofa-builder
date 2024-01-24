@@ -1,0 +1,291 @@
+<template page>
+  <l-m src="@pui/button/button.html"></l-m>
+  <style>
+    :host {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .container {
+      border: #aaa solid 1px;
+      display: flex;
+      --item-padding-top: 0;
+      --item-padding-bottom: 0;
+      border-radius: 8px;
+    }
+    .container > div {
+      padding: 8px 0 0 8px;
+      max-width: 30vw;
+      border-right: #aaa solid 1px;
+    }
+    .container > div:last-child {
+      border-right: none;
+    }
+    iconify-icon {
+      font-size: 18px;
+    }
+
+    p-list {
+      max-height: 300px;
+      overflow-y: auto;
+    }
+  </style>
+  <h2>{{t('p2.title')}}</h2>
+  <x-if :value="loadingUgFile">
+    <p>{{t('p2.desc')}}</p>
+  </x-if>
+  <x-else>
+    <div>
+      <!-- Total File:{{total}} <br /> -->
+      <div class="container">
+        <div>
+          <div>{{t('compFile')}}:{{compFiles.length}}</div>
+          <p-list>
+            <x-fill :value="compFiles">
+              <p-list-item>
+                <iconify-icon
+                  icon="iconamoon:component"
+                  slot="prefix"
+                ></iconify-icon>
+                {{$data}}</p-list-item
+              >
+            </x-fill>
+          </p-list>
+        </div>
+        <div>
+          <div>{{t('pageFile')}}:{{pageFiles.length}}</div>
+          <p-list>
+            <x-fill :value="pageFiles">
+              <p-list-item>
+                <iconify-icon
+                  icon="icon-park-outline:page"
+                  slot="prefix"
+                ></iconify-icon>
+                {{$data}}
+              </p-list-item>
+            </x-fill>
+          </p-list>
+        </div>
+        <div>
+          <div>{{t('jsFile')}}:{{jsFiles.length}}</div>
+          <p-list>
+            <x-fill :value="jsFiles">
+              <p-list-item>
+                <iconify-icon
+                  icon="tabler:brand-javascript"
+                  slot="prefix"
+                ></iconify-icon>
+                {{$data}}
+              </p-list-item>
+            </x-fill>
+          </p-list>
+        </div>
+        <div>
+          <div>{{t('cssFile')}}:{{cssFiles.length}}</div>
+          <p-list>
+            <x-fill :value="cssFiles">
+              <p-list-item>
+                <iconify-icon icon="ph:file-css" slot="prefix"></iconify-icon>
+                {{$data}}
+              </p-list-item>
+            </x-fill>
+          </p-list>
+        </div>
+        <div>
+          <div>{{t('htmlFile')}}:{{normalHtml.length}}</div>
+          <p-list>
+            <x-fill :value="normalHtml">
+              <p-list-item>
+                <iconify-icon icon="ph:file-html" slot="prefix"></iconify-icon>
+                {{$data}}
+              </p-list-item>
+            </x-fill>
+          </p-list>
+        </div>
+      </div>
+    </div>
+  </x-else>
+  <div style="text-align: center">
+    <p-button on:click="clickNext" style="width: 200px; margin-top: 16px"
+      >{{t('next')}}</p-button
+    >
+  </div>
+  <script>
+    import t, { local } from "../local.js";
+
+    export default async ({ load }) => {
+      // load(`https://cdn.jsdelivr.net/npm/terser@5.27.0/dist/bundle.min.js`);
+      // const terser = await load(
+      //   `https://cdn.jsdelivr.net/npm/terser@5.27.0/dist/bundle.min.js`
+      // );
+
+      // const result = await Terser.minify(
+      //   "function add(aaaa, bbbbb) { return aaaa + bbbbb; }"
+      // );
+      // console.log(result);
+
+      return {
+        data: {
+          total: 0,
+          compCount: 0,
+          pageCount: 0,
+          jsCount: 0,
+          compFiles: [],
+          pageFiles: [],
+          jsFiles: [],
+          cssFiles: [],
+          normalHtml: [],
+          _target: null, // 目标文件夹
+          loadingUgFile: true,
+          _handles: {},
+        },
+        attached() {
+          this.local = local;
+        },
+        detached() {
+          this.local = {};
+        },
+        proto: {
+          t,
+          clickNext() {
+            this.emit("next", {
+              bubbles: false,
+              data: {
+                handles: this._handles,
+                compFiles: this.compFiles.toJSON(),
+                pageFiles: this.pageFiles.toJSON(),
+                jsFiles: this.jsFiles.toJSON(),
+                cssFiles: this.cssFiles.toJSON(),
+                normalHtml: this.normalHtml.toJSON(),
+              },
+            });
+          },
+          async reloadFolder() {
+            this.loadingUgFile = true;
+
+            const handles = new Map();
+
+            const {
+              list,
+              total,
+              compFiles,
+              pageFiles,
+              jsFiles,
+              cssFiles,
+              normalHtml,
+            } = await getList(this._target, async (opt) => {
+              if (/\.min\./.test(opt.name)) {
+                return;
+              }
+
+              if (/\.html$/.test(opt.name)) {
+                const content = await opt.handle.text();
+                const temp = $(`<template>${content}</template>`);
+
+                const isComp = !!temp.$("template[component]");
+
+                if (isComp) {
+                  opt.isComp = true;
+                  handles.set(opt.handle.path, opt.handle);
+                  return;
+                }
+
+                const isPage = !!temp.$("template[page]");
+
+                if (isPage) {
+                  opt.isPage = true;
+                  handles.set(opt.handle.path, opt.handle);
+                  return;
+                }
+
+                opt.isHtml = true;
+                handles.set(opt.handle.path, opt.handle);
+              } else if (/\.js$/.test(opt.name)) {
+                opt.isJs = true;
+                handles.set(opt.handle.path, opt.handle);
+              } else if (/\.css$/.test(opt.name)) {
+                opt.isCss = true;
+                handles.set(opt.handle.path, opt.handle);
+              }
+            });
+
+            this._handles = handles;
+
+            this.compFiles = compFiles;
+            this.pageFiles = pageFiles;
+            this.jsFiles = jsFiles;
+            this.cssFiles = cssFiles;
+            this.normalHtml = normalHtml;
+            this.total = total;
+
+            // console.log("list:", list, total, compFiles, pageFiles, jsFiles);
+            this.loadingUgFile = false;
+
+            // setTimeout(() => {
+            //   this.shadow.$("p-button").ele.click();
+            // }, 100);
+          },
+        },
+      };
+    };
+
+    const getList = async (parHandle, callback) => {
+      const list = [];
+      let count = 0;
+      const compFiles = [];
+      const pageFiles = [];
+      const jsFiles = [];
+      const cssFiles = [];
+      const normalHtml = [];
+      for await (let [name, handle] of parHandle.entries()) {
+        if (name === "node_modules") {
+          continue;
+        }
+
+        const opt = {
+          name,
+          kind: handle.kind,
+          handle,
+        };
+
+        if (opt.kind === "directory") {
+          const result = await getList(handle, callback);
+          count += result.total;
+          compFiles.push(...result.compFiles);
+          pageFiles.push(...result.pageFiles);
+          jsFiles.push(...result.jsFiles);
+          cssFiles.push(...result.cssFiles);
+          normalHtml.push(...result.normalHtml);
+
+          opt.childs = result.list;
+        } else {
+          count++;
+          await callback(opt);
+          if (opt.isComp) {
+            compFiles.push(handle.path);
+          } else if (opt.isPage) {
+            pageFiles.push(handle.path);
+          } else if (opt.isJs) {
+            jsFiles.push(handle.path);
+          } else if (opt.isCss) {
+            cssFiles.push(handle.path);
+          } else if (opt.isHtml) {
+            normalHtml.push(handle.path);
+          }
+        }
+
+        list.push(opt);
+      }
+
+      return {
+        list,
+        total: count,
+        compFiles,
+        pageFiles,
+        jsFiles,
+        cssFiles,
+        normalHtml,
+      };
+    };
+  </script>
+</template>
